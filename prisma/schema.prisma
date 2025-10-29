@@ -1,0 +1,195 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id            String @id @default(uuid())
+  name          String
+  email         String
+  password_hash String
+  role          Role   @default(MEMBER)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt() @map("updated_at")
+
+  isActive                  Boolean   @default(true)
+  toggleActiveAndUnactiveBy String?   @map("toggle_active_and_unactive_by")
+  unactiveAt                DateTime? @map("unactive_at")
+
+  projects     Project[]
+  userSessions UserSession[]
+
+  @@map("users")
+}
+
+model UserSession {
+  id            String    @id @default(cuid())
+  userAgentHash String?   @map("user_agent_hash")
+  ip            String?
+  lastSeenAt    DateTime  @default(now()) @map("last_seen_at")
+  revokedAt     DateTime? @map("revoked_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  @@index([userId, revokedAt])
+  @@map("user_sessions")
+}
+
+enum Status {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  DONE
+}
+
+model Project {
+  id    String  @id @default(uuid())
+  title String
+  board String? //banca organizadora
+
+  status Status @default(PLANNING)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt() @map("updated_at")
+
+  isDeleted Boolean   @default(false)
+  deletedBy String?   @map("deleted_by")
+  deletedAt DateTime? @updatedAt() @map("deleted_at")
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String?
+
+  disciplines    Discipline[]
+  topics         Topic[]
+  cycles         Cycle[]
+  study_sessions StudySession[]
+
+  @@unique([userId, title])
+  @@index([userId])
+  @@map("projects")
+}
+
+model Discipline {
+  id       String @id @default(cuid())
+  name     String
+  position Int    @default(0)
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt() @map("updated_at")
+
+  isDeleted Boolean   @default(false)
+  deletedBy String?   @map("deleted_by")
+  deletedAt DateTime? @updatedAt() @map("deleted_at")
+
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String?
+
+  topics Topic[]
+
+  @@unique([name]) // evita duplicar disciplina dentro do concurso
+  @@index([projectId])
+  @@map("disciplines")
+}
+
+model Topic {
+  id       String  @id @default(cuid())
+  title    String
+  position Int     @default(0)
+  notes    String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt() @map("updated_at")
+
+  isDeleted Boolean   @default(false)
+  deletedBy String?   @map("deleted_by")
+  deletedAt DateTime? @updatedAt() @map("deleted_at")
+
+  study_sessions StudySession[]
+
+  discipline   Discipline? @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  disciplineId String?
+  project      Project?    @relation(fields: [projectId], references: [id])
+  projectId    String?
+
+  @@unique([disciplineId, title]) // tópico único por disciplina (título)
+  @@index([disciplineId])
+  @@map("topics")
+}
+
+model Cycle {
+  id     String @id @default(cuid())
+  title  String
+  status Status @default(PLANNING)
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt() @map("updated_at")
+
+  isDeleted Boolean   @default(false)
+  deletedBy String?   @map("deleted_by")
+  deletedAt DateTime? @updatedAt() @map("deleted_at")
+
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String?
+
+  study_sessions StudySession[]
+
+  @@unique([projectId, title])
+  @@index([projectId])
+  @@map("cycles")
+}
+
+model StudySession {
+  id                         String  @id @default(cuid())
+  scanningReadingDurationSec Int?    @default(0) @map("scanning_reading_duration_sec")
+  skimmingReadingDurationSec Int?    @default(0) @map("skimming_reading_duration_sec")
+  pagesReaded                Int?    @default(0) @map("pages_readed")
+  theoryStatus               Boolean @default(false) @map("theory_status")
+
+  rightQuestions        Int?     @default(0) @map("right_questions")
+  wrongQuestions        Int?     @default(0) @map("wrong_questions")
+  performancePercentage Decimal? @map("performance_percentage") @db.Decimal(20, 2)
+  questionsDurationSec  Int?     @default(0) @map("questions_duration_sec")
+  questionStatus        Boolean  @default(false) @map("question_status")
+
+  totalStudingDurationSec Int? @default(0) @map("total_studing_duration_sec")
+
+  notes  String?   @db.Text
+  viewAt DateTime? @map("view_at")
+
+  studyMethod String? @map("study_method")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt() @map("updated_at")
+
+  isDeleted Boolean   @default(false)
+  deletedBy String?   @map("deleted_by")
+  deletedAt DateTime? @updatedAt() @map("deleted_at")
+
+  topic     Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topicId   String?
+  cycle     Cycle?   @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  cycleId   String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String?
+
+  @@unique([cycleId, topicId, isDeleted], map: "uniq_active_session_per_cycle_topic")
+  @@index([topicId])
+  @@map("study_sessions")
+}
