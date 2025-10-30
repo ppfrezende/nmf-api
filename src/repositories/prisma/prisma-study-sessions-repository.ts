@@ -23,6 +23,22 @@ export class PrismaStudySessionsRepository implements StudySessionRepository {
     return study_session;
   }
 
+  async listAllStudySessions(projectId: string) {
+    const where = { projectId, isDeleted: false };
+
+    const [study_sessions, total_count] = await Promise.all([
+      prisma.studySession.findMany({
+        where,
+        orderBy: {
+          createdAt: 'asc',
+        },
+      }),
+      prisma.studySession.count({ where }),
+    ]);
+
+    return { study_sessions, total_count };
+  }
+
   async create(
     data: Prisma.StudySessionCreateInput,
     cycleId: string,

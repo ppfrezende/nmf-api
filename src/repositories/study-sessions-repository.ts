@@ -2,6 +2,10 @@ import { Prisma, type StudySession } from '@prisma/client';
 
 export interface StudySessionRepository {
   findById(studySessionId: string): Promise<StudySession | null>;
+  listAllStudySessions(projectId: string): Promise<{
+    study_sessions: StudySession[];
+    total_count: number;
+  }>;
   create(
     data: Prisma.StudySessionCreateInput,
     cycleId: string,

@@ -6,6 +6,7 @@ import { getStudiedTopicsByCycle } from './get-studied-topics-by-cycle';
 import { updateStudySession } from './update-study-session';
 import { getStudySession } from './get-study-session';
 import { deleteStudySession } from './delete-study-session';
+import { getStudySessionsByProject } from './get-study-sessions-by-project';
 
 export async function studySessionsRoutes(app: FastifyInstance) {
   app.post(
@@ -24,6 +25,12 @@ export async function studySessionsRoutes(app: FastifyInstance) {
     '/projects/:projectId/study-session/:studySessionId',
     { onRequest: [verifyJWT, verifyUserRole(['ADMIN', 'MEMBER'])] },
     getStudySession,
+  );
+
+  app.get(
+    '/projects/:projectId/study-sessions',
+    { onRequest: [verifyJWT, verifyUserRole(['ADMIN', 'MEMBER'])] },
+    getStudySessionsByProject,
   );
 
   app.put(
