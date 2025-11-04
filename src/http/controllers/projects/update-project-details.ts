@@ -12,12 +12,18 @@ export async function updateProjectDetails(
   const updateProjectDetailsBodySchema = z.object({
     title: z.string().optional(),
     board: z.string().optional(),
+    examDate: z
+      .preprocess(
+        (v) =>
+          typeof v === 'string' || typeof v === 'number' ? new Date(v) : v,
+        z.date(),
+      )
+      .optional(),
     status: z.nativeEnum(Status).optional(),
   });
 
-  const { title, board, status } = updateProjectDetailsBodySchema.parse(
-    request.body,
-  );
+  const { title, board, examDate, status } =
+    updateProjectDetailsBodySchema.parse(request.body);
 
   const updateProjectDetailsQuerySchema = z.object({
     projectId: z.string(),
@@ -40,6 +46,7 @@ export async function updateProjectDetails(
       data: {
         title,
         board,
+        examDate,
         status,
       },
     });
